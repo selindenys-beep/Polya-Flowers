@@ -30,6 +30,25 @@ def build_keyboard(product_id: str) -> dict:
     }
 
 
+def send_message(chat_id: int | str, text: str, reply_to: int | None = None) -> dict:
+    """Надсилає текстове повідомлення від імені бота."""
+    data = {"chat_id": chat_id, "text": text}
+    if reply_to:
+        data["reply_to_parameters"] = __import__("json").dumps({"message_id": reply_to})
+    resp = httpx.post(_url("sendMessage"), data=data, timeout=30)
+    resp.raise_for_status()
+    return resp.json()
+
+
+def answer_callback(callback_query_id: str, text: str = "") -> None:
+    """Підтверджує натискання inline-кнопки (прибирає «годинник» на кнопці)."""
+    httpx.post(
+        _url("answerCallbackQuery"),
+        data={"callback_query_id": callback_query_id, "text": text},
+        timeout=30,
+    )
+
+
 def publish_product(photo_bytes: bytes, caption: str, product_id: str) -> dict:
     """Надсилає фото з підписом і кнопками в групу. Повертає відповідь Telegram API."""
     if not config.TELEGRAM_BOT_TOKEN or not config.TELEGRAM_GROUP_CHAT_ID:

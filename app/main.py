@@ -19,7 +19,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from app import config
-from app.services import image_service, sheets_service, telegram_service, text_service
+from app.services import (
+    chat_service,
+    image_service,
+    sheets_service,
+    telegram_service,
+    text_service,
+)
 
 app = FastAPI(title="Polya Flowers")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
@@ -120,3 +126,46 @@ async def api_publish(request: Request, product_id: str = Form(...), caption: st
     )
     _PENDING.pop(product_id, None)
     return {"ok": True, "post_url": post_url}
+
+
+# ─────────────────────────────────────────────────────────────
+# Telegram webhook — сюди Telegram надсилає всі оновлення (повідомлення, кнопки).
+# Бот відповідає клієнтам через Claude Haiku (chat_service).
+# ─────────────────────────────────────────────────────────────
+@app.post("/telegram/webhook")
+async def telegram_webhook(request: Request):
+    update = await request.json()
+
+    # 1) Натискання inline-кнопок під товаром (Доставка / Задати питання).
+    if "callback_query" in update:
+        cq = update["callback_query"]
+        chat_id = cq["message"]["chat"]["id"]
+        action = (cq.get("data") or "").split(":", 1)[0]
+        telegram_service.answer_callback(cq["id"])
+        if action == "delivery":
+            telegram_service.send_message(chat_id, chat_service.DELIVERY_INFO)
+        elif action == "ask":
+            telegram_service.send_message(
+                chat_id, "Звісно! 💐 Напишіть, будь ласка, ваше запитання — і ми відповімо."
+            )
+        return {"ok": True}
+
+    # 2) Звичайні текстові повідомлення.
+    msg = update.get("message") or update.get("edited_message")
+    if not msg or "text" not in msg:
+        return {"ok": True}
+
+    chat = msg["chat"]
+    text = msg["text"]
+
+    # У приватному чаті відповідаємо завжди; у групі — щоб не спамити,
+    # лише коли згадали бота (@Polya_flowers_bot) або відповіли на його повідомлення.
+    is_private = chat.get("type") == "private"
+    mentioned = "@Polya_flowers_bot" in text
+    replied_to_bot = bool(msg.get("reply_to_message", {}).get("from", {}).get("is_bot"))
+    if not (is_private or mentioned or replied_to_bot):
+        return {"ok": True}
+
+    reply = chat_service.generate_reply(text.replace("@Polya_flowers_bot", "").strip())
+    telegram_service.send_message(chat["id"], reply, reply_to=msg["message_id"])
+    return {"ok": True}
