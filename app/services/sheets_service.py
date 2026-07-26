@@ -25,5 +25,13 @@ def append_sale(product_id: str, description: str, price: str, caption: str, pos
         "caption": caption,
         "post_url": post_url,
     }
-    resp = httpx.post(config.SHEETS_WEBHOOK_URL, json=payload, timeout=30, follow_redirects=True)
+    # Явно UTF-8 + charset, щоб емодзі/астральні символи не спотворювались у Apps Script.
+    import json as _json
+    resp = httpx.post(
+        config.SHEETS_WEBHOOK_URL,
+        content=_json.dumps(payload, ensure_ascii=False).encode("utf-8"),
+        headers={"Content-Type": "application/json; charset=utf-8"},
+        timeout=30,
+        follow_redirects=True,
+    )
     resp.raise_for_status()

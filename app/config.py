@@ -44,7 +44,6 @@ def missing_secrets() -> list[str]:
     """Повертає список ще не налаштованих секретів — для діагностики на дашборді."""
     checks = {
         "ANTHROPIC_API_KEY": ANTHROPIC_API_KEY,
-        "OPENAI_API_KEY": OPENAI_API_KEY,
         "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
         "TELEGRAM_GROUP_CHAT_ID": TELEGRAM_GROUP_CHAT_ID,
         "SHEETS_WEBHOOK_URL": SHEETS_WEBHOOK_URL,
