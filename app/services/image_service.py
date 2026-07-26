@@ -17,14 +17,22 @@ from app import config
 
 CANVAS = (1080, 1350)  # вертикальний формат для фолбеку
 
-# Промт для заміни фону. Сформульований так, щоб зберегти сам виріб незмінним.
+# Промт для сцени навколо виробу + брендинг. Сам виріб має лишитись незмінним.
 BACKGROUND_PROMPT = (
-    "Replace ONLY the background behind this handmade flower with a soft, elegant, "
-    "slightly blurred pastel studio backdrop (gentle light pink and lavender tones, "
-    "like a cozy florist boutique, with soft natural light and subtle bokeh). "
-    "Keep the handmade flower itself completely unchanged and photorealistic: exact same "
-    "colors, shape, petals, texture and details. Do not add or remove anything from the flower. "
-    "Center the flower nicely. High quality, clean, professional product photo."
+    "The input is a photo of a REAL HANDMADE flower made from chenille / pipe cleaners. "
+    "Create one elegant vertical product poster while keeping the handmade flower EXACTLY as in the "
+    "input — identical colors, exact same petals, shape, texture and fine details. Do NOT redraw, "
+    "restyle, beautify, smooth or replace the flower. Only build a beautiful scene around it and add text.\n\n"
+    "SCENE: place the flower as the hero, slightly above center, on a soft luxurious light-lavender "
+    "silk/satin fabric backdrop with gentle folds and soft natural light. Tastefully decorate around it "
+    "(not covering it): a few delicate sprigs of white baby's breath (gypsophila), a few stems of dried "
+    "lavender in the corners, and a light scattering of small pearl beads. Elegant, soft, feminine, "
+    "premium florist-boutique aesthetic, dreamy and clean.\n\n"
+    "TEXT (render it crisp and spelled EXACTLY, no typos, in soft elegant purple tones, not covering the flower):\n"
+    "  - top center, graceful calligraphy script, large: Polya Flowers\n"
+    "  - just below, elegant script, medium: Handmade\n"
+    "  - under it, small letter-spaced capitals with a tiny heart: WITH LOVE\n\n"
+    "Portrait orientation, high quality, cohesive lavender color palette."
 )
 
 
