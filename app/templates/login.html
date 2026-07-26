@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Polya Flowers — вхід</title>
+  <style>
+    body { font-family: -apple-system, system-ui, sans-serif; background: #f7f2f5;
+           display: grid; place-items: center; min-height: 100vh; margin: 0; }
+    .card { background: #fff; padding: 32px; border-radius: 18px; box-shadow: 0 10px 30px rgba(0,0,0,.08);
+            width: min(360px, 90vw); text-align: center; }
+    h1 { font-size: 22px; color: #7a3b5a; margin: 0 0 4px; }
+    p { color: #999; margin: 0 0 20px; font-size: 14px; }
+    input { width: 100%; padding: 12px; border: 1px solid #e2d5dd; border-radius: 10px;
+            box-sizing: border-box; font-size: 16px; }
+    button { width: 100%; margin-top: 12px; padding: 12px; border: 0; border-radius: 10px;
+             background: #b5678a; color: #fff; font-size: 16px; cursor: pointer; }
+    .err { color: #c0392b; font-size: 13px; margin-top: 10px; min-height: 16px; }
+  </style>
+</head>
+<body>
+  <form class="card" onsubmit="return doLogin(event)">
+    <h1>🌸 Polya Flowers</h1>
+    <p>Введіть пароль для входу</p>
+    <input id="pwd" type="password" placeholder="Пароль" autocomplete="current-password">
+    <button type="submit">Увійти</button>
+    <div class="err" id="err"></div>
+  </form>
+  <script>
+    async function doLogin(e) {
+      e.preventDefault();
+      const fd = new FormData();
+      fd.append('password', document.getElementById('pwd').value);
+      const r = await fetch('/login', { method: 'POST', body: fd });
+      if (r.ok) { location.href = '/'; }
+      else { document.getElementById('err').textContent = 'Невірний пароль'; }
+      return false;
+    }
+  </script>
+</body>
+</html>

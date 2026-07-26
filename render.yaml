@@ -1,0 +1,31 @@
+# Render Blueprint — автоматичний деплой з GitHub.
+# При кожному push у гілку main Render перезбирає та оновлює сервіс.
+services:
+  - type: web
+    name: polya-flowers
+    runtime: python
+    plan: free
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_GROUP_CHAT_ID
+        sync: false
+      - key: GOOGLE_SHEET_ID
+        sync: false
+      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+        sync: false
+      - key: MONOBANK_JAR_URL
+        sync: false
+      - key: DASHBOARD_PASSWORD
+        sync: false
+      - key: CLAUDE_CHAT_MODEL
+        value: claude-haiku-4-5-20251001
+      - key: CLAUDE_TEXT_MODEL
+        value: claude-sonnet-5

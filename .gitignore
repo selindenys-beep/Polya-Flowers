@@ -1,0 +1,27 @@
+# Секрети — НІКОЛИ не комітити
+.env
+*.env
+service_account.json
+google_credentials.json
+*.pem
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# Згенеровані / завантажені зображення
+/uploads/
+/generated/
+app/static/uploads/
+app/static/generated/
+
+# ОС / редактор
+.DS_Store
+.idea/
+.vscode/
+*.log
