@@ -142,31 +142,43 @@ async def telegram_webhook(request: Request):
         return {"ok": True}
 
     msg = update.get("message") or update.get("edited_message")
-    if not msg or "text" not in msg:
+    if not msg:
         return {"ok": True}
 
     chat = msg["chat"]
-    text = msg["text"]
     is_private = chat.get("type") == "private"
+    tg_id, username, name, phone = _extract_user(msg)
+
+    # Клієнт поділився контактом → зберігаємо телефон у переписку.
+    if "contact" in msg:
+        phone = msg["contact"].get("phone_number", phone)
+        sheets_service.log_message(tg_id, username, name, phone,
+                                   "[поділився контактом]", "", "контакт")
+        telegram_service.send_message(
+            chat["id"], "Дякуємо! 💐 Ми зберегли ваш контакт і звʼяжемось за потреби."
+        )
+        return {"ok": True}
+
+    if "text" not in msg:
+        return {"ok": True}
+    text = msg["text"]
 
     # 1) Діп-лінк із кнопок під товаром: /start ask | /start delivery.
-    # Клієнта перекидає в приватний чат, і розмова починається тут.
     if text.startswith("/start"):
         parts = text.split(maxsplit=1)
         payload = parts[1].strip() if len(parts) > 1 else ""
         if payload == "delivery":
-            telegram_service.send_message(chat["id"], chat_service.DELIVERY_INFO)
+            answer = chat_service.DELIVERY_INFO
+            question, kind = "🚚 Доставка (кнопка)", "доставка"
         elif payload == "ask":
-            telegram_service.send_message(
-                chat["id"],
-                "Вітаємо у Polya Flowers! 💐 Напишіть, будь ласка, ваше запитання — і ми відповімо.",
-            )
+            answer = "Вітаємо у Polya Flowers! 💐 Напишіть, будь ласка, ваше запитання — і ми відповімо."
+            question, kind = "❓ Задати питання (кнопка)", "запит"
         else:
-            telegram_service.send_message(
-                chat["id"],
-                "Вітаємо у Polya Flowers! 🌸 Ми робимо квіти ручної роботи. "
-                "Запитуйте про букети, доставку чи оплату — залюбки допоможемо.",
-            )
+            answer = ("Вітаємо у Polya Flowers! 🌸 Ми робимо квіти ручної роботи. "
+                      "Запитуйте про букети, доставку чи оплату — залюбки допоможемо.")
+            question, kind = "/start", "старт"
+        telegram_service.send_message(chat["id"], answer)
+        sheets_service.log_message(tg_id, username, name, phone, question, answer, kind)
         return {"ok": True}
 
     # 2) Звичайні повідомлення. У приваті відповідаємо завжди; у групі —
@@ -176,6 +188,18 @@ async def telegram_webhook(request: Request):
     if not (is_private or mentioned or replied_to_bot):
         return {"ok": True}
 
-    reply = chat_service.generate_reply(text.replace("@" + config.TELEGRAM_BOT_USERNAME, "").strip())
+    question = text.replace("@" + config.TELEGRAM_BOT_USERNAME, "").strip()
+    reply = chat_service.generate_reply(question)
     telegram_service.send_message(chat["id"], reply, reply_to=msg["message_id"])
+    sheets_service.log_message(tg_id, username, name, phone, question, reply, "повідомлення")
     return {"ok": True}
+
+
+def _extract_user(msg: dict) -> tuple:
+    """Витягує (Telegram ID, нікнейм, ім'я, телефон) з повідомлення."""
+    frm = msg.get("from", {})
+    tg_id = frm.get("id", "")
+    username = "@" + frm["username"] if frm.get("username") else ""
+    name = " ".join(x for x in [frm.get("first_name"), frm.get("last_name")] if x)
+    phone = (msg.get("contact") or {}).get("phone_number", "")
+    return tg_id, username, name, phone
