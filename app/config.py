@@ -24,6 +24,7 @@ OPENAI_API_KEY = _get("OPENAI_API_KEY")
 # --- Telegram ---
 TELEGRAM_BOT_TOKEN = _get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_GROUP_CHAT_ID = _get("TELEGRAM_GROUP_CHAT_ID")
+TELEGRAM_BOT_USERNAME = _get("TELEGRAM_BOT_USERNAME", "Polya_flowers_bot")
 
 # --- Google Sheets (через Apps Script Web App) ---
 # URL розгорнутого веб-застосунку Apps Script + спільний токен для захисту.

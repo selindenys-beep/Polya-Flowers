@@ -15,16 +15,19 @@ def _url(method: str) -> str:
 def build_keyboard(product_id: str) -> dict:
     """Кнопки під публікацією: оплата, питання, доставка.
 
-    «Оплатити» — зовнішнє посилання на банку monobank.
-    «Задати питання» та «Доставка» — callback, які обробляє бот (Haiku).
+    Усі три — зовнішні посилання:
+    «Оплатити» — банка monobank.
+    «Задати питання» / «Доставка» — діп-лінк у приватний чат із ботом
+    (t.me/<bot>?start=…), де бот продовжує спілкування (а не в групі).
     """
     pay_url = config.MONOBANK_JAR_URL or config.PUBLIC_BASE_URL
+    bot = config.TELEGRAM_BOT_USERNAME
     return {
         "inline_keyboard": [
             [{"text": "💳 Оплатити", "url": pay_url}],
             [
-                {"text": "❓ Задати питання", "callback_data": f"ask:{product_id}"},
-                {"text": "🚚 Доставка", "callback_data": f"delivery:{product_id}"},
+                {"text": "❓ Задати питання", "url": f"https://t.me/{bot}?start=ask"},
+                {"text": "🚚 Доставка", "url": f"https://t.me/{bot}?start=delivery"},
             ],
         ]
     }

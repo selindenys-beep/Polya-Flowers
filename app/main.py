@@ -136,36 +136,46 @@ async def api_publish(request: Request, product_id: str = Form(...), caption: st
 async def telegram_webhook(request: Request):
     update = await request.json()
 
-    # 1) Натискання inline-кнопок під товаром (Доставка / Задати питання).
+    # Підстраховка: якщо десь лишились старі callback-кнопки — просто підтвердити.
     if "callback_query" in update:
-        cq = update["callback_query"]
-        chat_id = cq["message"]["chat"]["id"]
-        action = (cq.get("data") or "").split(":", 1)[0]
-        telegram_service.answer_callback(cq["id"])
-        if action == "delivery":
-            telegram_service.send_message(chat_id, chat_service.DELIVERY_INFO)
-        elif action == "ask":
-            telegram_service.send_message(
-                chat_id, "Звісно! 💐 Напишіть, будь ласка, ваше запитання — і ми відповімо."
-            )
+        telegram_service.answer_callback(update["callback_query"]["id"])
         return {"ok": True}
 
-    # 2) Звичайні текстові повідомлення.
     msg = update.get("message") or update.get("edited_message")
     if not msg or "text" not in msg:
         return {"ok": True}
 
     chat = msg["chat"]
     text = msg["text"]
-
-    # У приватному чаті відповідаємо завжди; у групі — щоб не спамити,
-    # лише коли згадали бота (@Polya_flowers_bot) або відповіли на його повідомлення.
     is_private = chat.get("type") == "private"
-    mentioned = "@Polya_flowers_bot" in text
+
+    # 1) Діп-лінк із кнопок під товаром: /start ask | /start delivery.
+    # Клієнта перекидає в приватний чат, і розмова починається тут.
+    if text.startswith("/start"):
+        parts = text.split(maxsplit=1)
+        payload = parts[1].strip() if len(parts) > 1 else ""
+        if payload == "delivery":
+            telegram_service.send_message(chat["id"], chat_service.DELIVERY_INFO)
+        elif payload == "ask":
+            telegram_service.send_message(
+                chat["id"],
+                "Вітаємо у Polya Flowers! 💐 Напишіть, будь ласка, ваше запитання — і ми відповімо.",
+            )
+        else:
+            telegram_service.send_message(
+                chat["id"],
+                "Вітаємо у Polya Flowers! 🌸 Ми робимо квіти ручної роботи. "
+                "Запитуйте про букети, доставку чи оплату — залюбки допоможемо.",
+            )
+        return {"ok": True}
+
+    # 2) Звичайні повідомлення. У приваті відповідаємо завжди; у групі —
+    # лише коли згадали бота або відповіли на його повідомлення (щоб не спамити).
+    mentioned = "@" + config.TELEGRAM_BOT_USERNAME in text
     replied_to_bot = bool(msg.get("reply_to_message", {}).get("from", {}).get("is_bot"))
     if not (is_private or mentioned or replied_to_bot):
         return {"ok": True}
 
-    reply = chat_service.generate_reply(text.replace("@Polya_flowers_bot", "").strip())
+    reply = chat_service.generate_reply(text.replace("@" + config.TELEGRAM_BOT_USERNAME, "").strip())
     telegram_service.send_message(chat["id"], reply, reply_to=msg["message_id"])
     return {"ok": True}
