@@ -62,7 +62,6 @@ def _openai_replace_background(photo_bytes: bytes) -> bytes:
         image=buf,
         prompt=BACKGROUND_PROMPT,
         size="1024x1536",
-        quality="medium",  # баланс якість/вартість (~кілька центів за фото)
     )
     return base64.b64decode(resp.data[0].b64_json)
 
