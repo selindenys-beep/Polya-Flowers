@@ -25,10 +25,10 @@ OPENAI_API_KEY = _get("OPENAI_API_KEY")
 TELEGRAM_BOT_TOKEN = _get("TELEGRAM_BOT_TOKEN")
 TELEGRAM_GROUP_CHAT_ID = _get("TELEGRAM_GROUP_CHAT_ID")
 
-# --- Google Sheets ---
-GOOGLE_SHEET_ID = _get("GOOGLE_SHEET_ID")
-GOOGLE_SERVICE_ACCOUNT_FILE = _get("GOOGLE_SERVICE_ACCOUNT_FILE", "service_account.json")
-GOOGLE_SERVICE_ACCOUNT_JSON = _get("GOOGLE_SERVICE_ACCOUNT_JSON")
+# --- Google Sheets (через Apps Script Web App) ---
+# URL розгорнутого веб-застосунку Apps Script + спільний токен для захисту.
+SHEETS_WEBHOOK_URL = _get("SHEETS_WEBHOOK_URL")
+SHEETS_WEBHOOK_TOKEN = _get("SHEETS_WEBHOOK_TOKEN")
 
 # --- Оплата ---
 MONOBANK_JAR_URL = _get("MONOBANK_JAR_URL")
@@ -47,7 +47,7 @@ def missing_secrets() -> list[str]:
         "OPENAI_API_KEY": OPENAI_API_KEY,
         "TELEGRAM_BOT_TOKEN": TELEGRAM_BOT_TOKEN,
         "TELEGRAM_GROUP_CHAT_ID": TELEGRAM_GROUP_CHAT_ID,
-        "GOOGLE_SHEET_ID": GOOGLE_SHEET_ID,
+        "SHEETS_WEBHOOK_URL": SHEETS_WEBHOOK_URL,
         "MONOBANK_JAR_URL": MONOBANK_JAR_URL,
     }
     return [name for name, value in checks.items() if not value]

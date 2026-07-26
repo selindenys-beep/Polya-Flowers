@@ -17,9 +17,9 @@ services:
         sync: false
       - key: TELEGRAM_GROUP_CHAT_ID
         sync: false
-      - key: GOOGLE_SHEET_ID
+      - key: SHEETS_WEBHOOK_URL
         sync: false
-      - key: GOOGLE_SERVICE_ACCOUNT_JSON
+      - key: SHEETS_WEBHOOK_TOKEN
         sync: false
       - key: MONOBANK_JAR_URL
         sync: false
