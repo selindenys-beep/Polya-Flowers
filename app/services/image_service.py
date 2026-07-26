@@ -1,17 +1,17 @@
-"""Обробка реального фото товару: акуратна композиція на гарному фоні + підпис.
+"""Обробка реального фото товару.
 
-ВАЖЛИВО: ми покращуємо СПРАВЖНЄ фото букета (а не генеруємо вигаданий),
+ВАЖЛИВО: ми покращуємо СПРАВЖНЄ фото виробу (а не генеруємо вигаданий),
 щоб клієнт отримав саме те, що бачить на зображенні.
 
-Поточна реалізація (MVP) — локальна, без зовнішніх API: масштабування,
-м'який градієнтний фон-підкладка та текстовий підпис. Пізніше сюди можна
-додати якісне видалення фону (rembg / remove.bg / OpenAI) — інтерфейс не зміниться.
+Поточна реалізація (без видалення фону): приводимо фото до єдиного вертикального
+формату на м'якій пастельній підкладці. Підпис у фото НЕ вписуємо — він іде окремим
+текстом посту. Заміна фону (вирізання квітки) додається окремо (див. remove_background).
 """
 from __future__ import annotations
 
 import io
 
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image
 
 CANVAS = (1080, 1350)  # вертикальний формат, зручний для Telegram/Instagram
 
@@ -33,26 +33,15 @@ def _gradient_background(size: tuple[int, int]) -> Image.Image:
 
 
 def process(photo_bytes: bytes, caption: str | None = None) -> bytes:
-    """Повертає JPEG-байти обробленого зображення для попереднього перегляду/публікації."""
+    """Повертає JPEG-байти обробленого фото для перегляду/публікації."""
     product = Image.open(io.BytesIO(photo_bytes)).convert("RGB")
 
     canvas = _gradient_background(CANVAS)
-    max_w, max_h = int(CANVAS[0] * 0.86), int(CANVAS[1] * 0.74)
+    max_w, max_h = int(CANVAS[0] * 0.9), int(CANVAS[1] * 0.9)
     product.thumbnail((max_w, max_h), Image.LANCZOS)
     x = (CANVAS[0] - product.width) // 2
-    y = int(CANVAS[1] * 0.06)
+    y = (CANVAS[1] - product.height) // 2
     canvas.paste(product, (x, y))
-
-    if caption:
-        draw = ImageDraw.Draw(canvas)
-        try:
-            font = ImageFont.truetype("/System/Library/Fonts/Supplemental/Arial.ttf", 40)
-        except OSError:
-            font = ImageFont.load_default()
-        first_line = caption.strip().splitlines()[0][:60]
-        tw = draw.textlength(first_line, font=font)
-        draw.text(((CANVAS[0] - tw) / 2, int(CANVAS[1] * 0.86)), first_line,
-                  fill=(90, 60, 80), font=font)
 
     out = io.BytesIO()
     canvas.save(out, format="JPEG", quality=90)

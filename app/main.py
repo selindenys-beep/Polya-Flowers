@@ -86,8 +86,8 @@ async def api_process(
         raise HTTPException(status_code=401, detail="Потрібен вхід")
 
     raw = await photo.read()
-    caption = text_service.generate_caption(description, price)
-    processed = image_service.process(raw, caption)
+    caption = text_service.generate_caption(description, price, raw)
+    processed = image_service.process(raw)
 
     product_id = uuid.uuid4().hex[:10]
     _PENDING[product_id] = {
