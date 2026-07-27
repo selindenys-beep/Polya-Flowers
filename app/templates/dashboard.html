@@ -7,76 +7,139 @@
   <style>
     :root { --accent: #b5678a; --accent-dark: #7a3b5a; --bg: #f7f2f5; }
     * { box-sizing: border-box; }
-    body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg);
-           margin: 0; color: #333; }
+    body { font-family: -apple-system, system-ui, sans-serif; background: var(--bg); margin: 0; color: #333; }
     header { background: #fff; padding: 16px 24px; box-shadow: 0 2px 8px rgba(0,0,0,.05); }
     header h1 { margin: 0; font-size: 20px; color: var(--accent-dark); }
-    .wrap { max-width: 900px; margin: 24px auto; padding: 0 16px;
-            display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-    @media (max-width: 720px) { .wrap { grid-template-columns: 1fr; } }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; max-width: 1000px; margin: 18px auto 0; padding: 0 16px; }
+    .tab { border: 0; background: #efe3ea; color: var(--accent-dark); padding: 9px 16px; border-radius: 999px;
+           font-size: 14px; cursor: pointer; }
+    .tab.active { background: var(--accent); color: #fff; }
+    .wrap { max-width: 1000px; margin: 18px auto; padding: 0 16px; }
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 760px) { .cols { grid-template-columns: 1fr; } }
     .card { background: #fff; border-radius: 16px; padding: 20px; box-shadow: 0 6px 20px rgba(0,0,0,.06); }
     .card h2 { margin: 0 0 14px; font-size: 16px; color: var(--accent-dark); }
     label { display: block; font-size: 13px; color: #777; margin: 12px 0 4px; }
-    input[type=text], input[type=number], textarea {
-      width: 100%; padding: 10px; border: 1px solid #e2d5dd; border-radius: 10px; font-size: 15px; }
+    input[type=text], textarea { width: 100%; padding: 10px; border: 1px solid #e2d5dd; border-radius: 10px; font-size: 15px; }
     textarea { min-height: 70px; resize: vertical; }
-    .drop { border: 2px dashed #d9c3ce; border-radius: 12px; padding: 22px; text-align: center;
-            color: #a888a0; cursor: pointer; }
+    .drop { border: 2px dashed #d9c3ce; border-radius: 12px; padding: 22px; text-align: center; color: #a888a0; cursor: pointer; }
     .drop img { max-width: 100%; border-radius: 10px; }
-    button { border: 0; border-radius: 10px; padding: 12px 16px; font-size: 15px; cursor: pointer; }
+    button.btn { border: 0; border-radius: 10px; padding: 12px 16px; font-size: 15px; cursor: pointer; }
     .btn-primary { background: var(--accent); color: #fff; width: 100%; margin-top: 16px; }
     .btn-publish { background: #2e9e5b; color: #fff; width: 100%; margin-top: 12px; }
     .btn-primary:disabled, .btn-publish:disabled { opacity: .5; cursor: not-allowed; }
     .preview img { max-width: 100%; border-radius: 12px; }
-    .caption { white-space: pre-wrap; background: #faf5f8; border-radius: 10px; padding: 12px;
-               margin-top: 12px; font-size: 14px; }
+    .caption { white-space: pre-wrap; background: #faf5f8; border-radius: 10px; padding: 12px; margin-top: 12px; font-size: 14px; }
     .muted { color: #aaa; font-size: 13px; }
-    .warn { background: #fff5e6; border: 1px solid #ffd9a0; color: #9a6b16; padding: 10px 12px;
-            border-radius: 10px; font-size: 13px; margin: 0 16px 12px; }
+    .warn { background: #fff5e6; border: 1px solid #ffd9a0; color: #9a6b16; padding: 10px 12px; border-radius: 10px; font-size: 13px; margin: 12px 16px 0; }
     .status { margin-top: 10px; font-size: 14px; min-height: 18px; }
+    .table-wrap { overflow-x: auto; }
+    table { border-collapse: collapse; width: 100%; font-size: 13px; }
+    th, td { border: 1px solid #eadfe6; padding: 8px 10px; text-align: left; vertical-align: top; white-space: nowrap; }
+    th { background: #f6edf2; color: var(--accent-dark); position: sticky; top: 0; }
+    td { white-space: normal; max-width: 340px; }
+    .toolbar { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+    .refresh { background: #efe3ea; color: var(--accent-dark); }
   </style>
 </head>
 <body>
-  <header><h1>🌸 Polya Flowers — панель публікацій</h1></header>
+  <header><h1>🌸 Polya Flowers — панель</h1></header>
 
   {% if missing_secrets %}
-  <div class="warn">⚙️ Ще не налаштовано: {{ missing_secrets | join(', ') }}. Публікація запрацює після додавання ключів.</div>
+  <div class="warn">⚙️ Ще не налаштовано: {{ missing_secrets | join(', ') }}.</div>
   {% endif %}
 
+  <div class="tabs" id="tabs"></div>
+
   <div class="wrap">
-    <!-- Ліва колонка: введення -->
-    <div class="card">
-      <h2>1. Новий товар</h2>
-      <div class="drop" id="drop" onclick="document.getElementById('file').click()">
-        <span id="dropText">📷 Натисніть, щоб додати фото букета</span>
-        <img id="thumb" style="display:none">
+    <!-- Вкладка 1: додавання товару -->
+    <div id="panel-add">
+      <div class="cols">
+        <div class="card">
+          <h2>1. Новий товар</h2>
+          <div class="drop" id="drop" onclick="document.getElementById('file').click()">
+            <span id="dropText">📷 Натисніть, щоб додати фото</span>
+            <img id="thumb" style="display:none">
+          </div>
+          <input type="file" id="file" accept="image/*" style="display:none" onchange="onFile(this)">
+          <label>Опис (необов'язково)</label>
+          <textarea id="desc" placeholder="Напр.: ніжна квітка з синьою облямівкою"></textarea>
+          <label>Ціна</label>
+          <input type="text" id="price" placeholder="Напр.: 120 грн">
+          <button class="btn btn-primary" id="processBtn" onclick="doProcess()" disabled>✨ Обробити</button>
+          <div class="status" id="procStatus"></div>
+        </div>
+        <div class="card">
+          <h2>2. Результат</h2>
+          <div class="preview" id="preview"><span class="muted">Тут з'явиться готове фото і підпис.</span></div>
+          <div class="caption" id="captionBox" style="display:none" contenteditable="true"></div>
+          <button class="btn btn-publish" id="publishBtn" onclick="doPublish()" disabled>📢 Публікація</button>
+          <div class="status" id="pubStatus"></div>
+        </div>
       </div>
-      <input type="file" id="file" accept="image/*" style="display:none" onchange="onFile(this)">
-
-      <label>Опис (необов'язково)</label>
-      <textarea id="desc" placeholder="Напр.: ніжний букет з піоній та евкаліпта"></textarea>
-
-      <label>Ціна</label>
-      <input type="text" id="price" placeholder="Напр.: 650 грн">
-
-      <button class="btn-primary" id="processBtn" onclick="doProcess()" disabled>✨ Обробити</button>
-      <div class="status" id="procStatus"></div>
     </div>
 
-    <!-- Права колонка: результат -->
-    <div class="card">
-      <h2>2. Результат</h2>
-      <div class="preview" id="preview"><span class="muted">Тут з'явиться готове фото і підпис.</span></div>
-      <div class="caption" id="captionBox" style="display:none" contenteditable="true"></div>
-      <button class="btn-publish" id="publishBtn" onclick="doPublish()" disabled>📢 Публікація</button>
-      <div class="status" id="pubStatus"></div>
+    <!-- Вкладка листа Google Sheets -->
+    <div id="panel-sheet" style="display:none">
+      <div class="card">
+        <div class="toolbar">
+          <h2 id="sheetTitle" style="margin:0">Аркуш</h2>
+          <button class="btn refresh" onclick="loadSheets(true)">↻ Оновити</button>
+        </div>
+        <div class="table-wrap" id="sheetTable"><span class="muted">Завантаження…</span></div>
+      </div>
     </div>
   </div>
 
   <script>
-    let currentFile = null;
-    let productId = null;
+    let currentFile = null, productId = null;
+    let sheetsData = [], activeTab = 'add';
 
+    // ---- Вкладки ----
+    function buildTabs() {
+      const tabs = document.getElementById('tabs');
+      let html = '<button class="tab" data-tab="add" onclick="switchTab(\'add\')">➕ Новий товар</button>';
+      sheetsData.forEach((s, i) => {
+        html += `<button class="tab" data-tab="s${i}" onclick="switchTab('s${i}')">📄 ${escapeHtml(s.name)}</button>`;
+      });
+      tabs.innerHTML = html;
+      highlightTab();
+    }
+    function highlightTab() {
+      document.querySelectorAll('.tab').forEach(b => b.classList.toggle('active', b.dataset.tab === activeTab));
+    }
+    function switchTab(tab) {
+      activeTab = tab;
+      const isAdd = tab === 'add';
+      document.getElementById('panel-add').style.display = isAdd ? 'block' : 'none';
+      document.getElementById('panel-sheet').style.display = isAdd ? 'none' : 'block';
+      highlightTab();
+      if (!isAdd) renderSheet(parseInt(tab.slice(1), 10));
+    }
+    function renderSheet(idx) {
+      const s = sheetsData[idx];
+      document.getElementById('sheetTitle').textContent = s ? s.name : 'Аркуш';
+      const box = document.getElementById('sheetTable');
+      if (!s || !s.values || !s.values.length) { box.innerHTML = '<span class="muted">Поки порожньо.</span>'; return; }
+      const [head, ...rows] = s.values;
+      let html = '<table><thead><tr>' + head.map(h => `<th>${escapeHtml(h)}</th>`).join('') + '</tr></thead><tbody>';
+      rows.slice().reverse().forEach(r => {
+        html += '<tr>' + head.map((_, i) => `<td>${escapeHtml(r[i] || '')}</td>`).join('') + '</tr>';
+      });
+      box.innerHTML = html + '</tbody></table>';
+    }
+    async function loadSheets(reRender) {
+      try {
+        const r = await fetch('/api/sheets');
+        const d = await r.json();
+        sheetsData = d.sheets || [];
+        buildTabs();
+        if (reRender && activeTab.startsWith('s')) renderSheet(parseInt(activeTab.slice(1), 10));
+      } catch (e) { /* тихо */ }
+    }
+    function escapeHtml(s) { return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+    // ---- Додавання товару (як було) ----
     function onFile(input) {
       currentFile = input.files[0];
       if (!currentFile) return;
@@ -89,12 +152,11 @@
       reader.readAsDataURL(currentFile);
       document.getElementById('processBtn').disabled = false;
     }
-
     async function doProcess() {
       if (!currentFile) return;
       const btn = document.getElementById('processBtn');
       btn.disabled = true;
-      document.getElementById('procStatus').textContent = 'Обробляю…';
+      document.getElementById('procStatus').textContent = 'Обробляю… (може зайняти до хвилини)';
       const fd = new FormData();
       fd.append('photo', currentFile);
       fd.append('description', document.getElementById('desc').value);
@@ -104,8 +166,7 @@
         if (!r.ok) throw new Error(await r.text());
         const data = await r.json();
         productId = data.product_id;
-        document.getElementById('preview').innerHTML =
-          '<img src="data:image/jpeg;base64,' + data.image_base64 + '">';
+        document.getElementById('preview').innerHTML = '<img src="data:image/png;base64,' + data.image_base64 + '">';
         const cap = document.getElementById('captionBox');
         cap.style.display = 'block'; cap.textContent = data.caption;
         document.getElementById('publishBtn').disabled = false;
@@ -114,7 +175,6 @@
         document.getElementById('procStatus').textContent = 'Помилка: ' + err.message;
       } finally { btn.disabled = false; }
     }
-
     async function doPublish() {
       if (!productId) return;
       const btn = document.getElementById('publishBtn');
@@ -127,13 +187,17 @@
         const r = await fetch('/api/publish', { method: 'POST', body: fd });
         if (!r.ok) throw new Error(await r.text());
         const data = await r.json();
-        document.getElementById('pubStatus').innerHTML =
-          '✅ Опубліковано!' + (data.post_url ? ' <a href="' + data.post_url + '" target="_blank">Пост</a>' : '');
+        document.getElementById('pubStatus').innerHTML = '✅ Опубліковано!' +
+          (data.post_url ? ' <a href="' + data.post_url + '" target="_blank">Пост</a>' : '');
+        loadSheets(false);
       } catch (err) {
         document.getElementById('pubStatus').textContent = 'Помилка: ' + err.message;
         btn.disabled = false;
       }
     }
+
+    buildTabs();
+    loadSheets(false);
   </script>
 </body>
 </html>

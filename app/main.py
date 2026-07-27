@@ -128,6 +128,17 @@ async def api_publish(request: Request, product_id: str = Form(...), caption: st
     return {"ok": True, "post_url": post_url}
 
 
+@app.get("/api/sheets")
+def api_sheets(request: Request):
+    """Повертає всі аркуші Google Sheets для відображення у вкладках дашборда."""
+    if not _is_authed(request):
+        raise HTTPException(status_code=401, detail="Потрібен вхід")
+    try:
+        return {"ok": True, "sheets": sheets_service.read_all()}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": str(e), "sheets": []}
+
+
 # ─────────────────────────────────────────────────────────────
 # Telegram webhook — сюди Telegram надсилає всі оновлення (повідомлення, кнопки).
 # Бот відповідає клієнтам через Claude Haiku (chat_service).
@@ -163,10 +174,23 @@ async def telegram_webhook(request: Request):
         return {"ok": True}
     text = msg["text"]
 
-    # 1) Діп-лінк із кнопок під товаром: /start ask | /start delivery.
+    # 1) Діп-лінк із кнопок під товаром: /start pay | ask | delivery.
     if text.startswith("/start"):
         parts = text.split(maxsplit=1)
         payload = parts[1].strip() if len(parts) > 1 else ""
+
+        # Оплата: фіксуємо натискання і даємо кнопку переходу на monobank.
+        if payload == "pay":
+            sheets_service.log_payment_click(tg_id, username, name, phone)
+            pay_url = config.MONOBANK_JAR_URL or config.PUBLIC_BASE_URL
+            telegram_service.send_message(
+                chat["id"],
+                "Дякуємо за замовлення! 💐 Натисніть кнопку нижче, щоб перейти до оплати "
+                "(підтримується Apple Pay / Google Pay та картка).",
+                reply_markup={"inline_keyboard": [[{"text": "💳 Перейти до оплати", "url": pay_url}]]},
+            )
+            return {"ok": True}
+
         if payload == "delivery":
             answer = chat_service.DELIVERY_INFO
             question, kind = "🚚 Доставка (кнопка)", "доставка"

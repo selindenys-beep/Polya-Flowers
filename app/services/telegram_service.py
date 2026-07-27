@@ -20,11 +20,12 @@ def build_keyboard(product_id: str) -> dict:
     «Задати питання» / «Доставка» — діп-лінк у приватний чат із ботом
     (t.me/<bot>?start=…), де бот продовжує спілкування (а не в групі).
     """
-    pay_url = config.MONOBANK_JAR_URL or config.PUBLIC_BASE_URL
     bot = config.TELEGRAM_BOT_USERNAME
     return {
         "inline_keyboard": [
-            [{"text": "💳 Оплатити", "url": pay_url}],
+            # Оплата веде в бота (?start=pay) — щоб зафіксувати натискання,
+            # далі бот дає кнопку переходу на monobank.
+            [{"text": "💳 Оплатити", "url": f"https://t.me/{bot}?start=pay"}],
             [
                 {"text": "❓ Задати питання", "url": f"https://t.me/{bot}?start=ask"},
                 {"text": "🚚 Доставка", "url": f"https://t.me/{bot}?start=delivery"},
@@ -33,11 +34,14 @@ def build_keyboard(product_id: str) -> dict:
     }
 
 
-def send_message(chat_id: int | str, text: str, reply_to: int | None = None) -> dict:
-    """Надсилає текстове повідомлення від імені бота."""
+def send_message(chat_id: int | str, text: str, reply_to: int | None = None,
+                 reply_markup: dict | None = None) -> dict:
+    """Надсилає текстове повідомлення від імені бота (за потреби з кнопками)."""
     data = {"chat_id": chat_id, "text": text}
     if reply_to:
         data["reply_to_parameters"] = __import__("json").dumps({"message_id": reply_to})
+    if reply_markup:
+        data["reply_markup"] = __import__("json").dumps(reply_markup)
     resp = httpx.post(_url("sendMessage"), data=data, timeout=30)
     resp.raise_for_status()
     return resp.json()

@@ -32,6 +32,18 @@ function doPost(e) {
   }
 }
 
+function doGet(e) {
+  // Читання всіх аркушів для дашборда (захищено токеном).
+  if (!e || !e.parameter || e.parameter.token !== SECRET_TOKEN) {
+    return json({ ok: false, error: 'unauthorized' });
+  }
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets().map(function (sh) {
+    return { name: sh.getName(), values: sh.getDataRange().getDisplayValues() };
+  });
+  return json({ ok: true, sheets: sheets });
+}
+
 function getOrCreateSheet(name, header) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(name);

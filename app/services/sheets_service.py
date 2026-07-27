@@ -57,3 +57,31 @@ def log_message(tg_id, username: str, name: str, phone: str,
               [_now(), tg_id, username, name, phone, question, answer, kind])
     except Exception as e:  # noqa: BLE001 — лог не має ламати відповідь бота
         print(f"[sheets_service] log_message failed: {e}")
+
+
+# --- Оплати (натискання кнопки «Оплатити») ---
+_PAYMENT_HEADER = ["Дата", "Telegram ID", "Нікнейм", "Ім'я", "Телефон", "Дія"]
+
+
+def log_payment_click(tg_id, username: str, name: str, phone: str) -> None:
+    """Додає рядок про натискання «Оплатити» в аркуш «Оплати» (кожне натискання окремо)."""
+    try:
+        _post("Оплати", _PAYMENT_HEADER,
+              [_now(), tg_id, username, name, phone, "Натиснув «Оплатити»"])
+    except Exception as e:  # noqa: BLE001
+        print(f"[sheets_service] log_payment_click failed: {e}")
+
+
+def read_all() -> list[dict]:
+    """Читає всі аркуші через Apps Script (doGet). Повертає [{name, values}]."""
+    if not config.SHEETS_WEBHOOK_URL:
+        return []
+    resp = httpx.get(
+        config.SHEETS_WEBHOOK_URL,
+        params={"token": config.SHEETS_WEBHOOK_TOKEN},
+        timeout=30,
+        follow_redirects=True,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    return data.get("sheets", []) if data.get("ok") else []
