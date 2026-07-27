@@ -49,11 +49,12 @@ function getOrCreateSheet(name, header) {
   let sheet = ss.getSheetByName(name);
   if (!sheet) {
     sheet = ss.insertSheet(name);
-    if (header.length) {
-      sheet.appendRow(header);
-      sheet.getRange(1, 1, 1, header.length).setFontWeight('bold');
-      sheet.setFrozenRows(1);
-    }
+  }
+  // Проставляємо заголовки, якщо аркуш новий АБО існував порожнім.
+  if (header.length && sheet.getLastRow() === 0) {
+    sheet.appendRow(header);
+    sheet.getRange(1, 1, 1, header.length).setFontWeight('bold');
+    sheet.setFrozenRows(1);
   }
   return sheet;
 }
