@@ -77,6 +77,14 @@ def _openai_replace_background(photo_bytes: bytes) -> bytes:
     return base64.b64decode(resp.data[0].b64_json)
 
 
+def passthrough(photo_bytes: bytes) -> bytes:
+    """Готове фото: використовуємо як є (лише нормалізуємо у JPEG), без заміни фону."""
+    img = Image.open(io.BytesIO(photo_bytes)).convert("RGB")
+    out = io.BytesIO()
+    img.save(out, format="JPEG", quality=92)
+    return out.getvalue()
+
+
 def process(photo_bytes: bytes, caption: str | None = None) -> bytes:
     """Повертає JPEG/PNG-байти обробленого фото. Пробує OpenAI, інакше — фолбек."""
     if config.OPENAI_API_KEY:

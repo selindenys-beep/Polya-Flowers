@@ -80,14 +80,19 @@ async def api_process(
     photo: UploadFile,
     description: str = Form(""),
     price: str = Form(""),
+    skip_image: str = Form(""),
 ):
-    """Обробляє фото + генерує підпис. Повертає прев'ю (base64) і текст."""
+    """Обробляє фото + генерує підпис. Повертає прев'ю (base64) і текст.
+
+    skip_image (готове фото): не змінюємо фон — беремо зображення як є,
+    лише генеруємо підпис.
+    """
     if not _is_authed(request):
         raise HTTPException(status_code=401, detail="Потрібен вхід")
 
     raw = await photo.read()
     caption = text_service.generate_caption(description, price, raw)
-    processed = image_service.process(raw)
+    processed = image_service.passthrough(raw) if skip_image else image_service.process(raw)
 
     product_id = uuid.uuid4().hex[:10]
     _PENDING[product_id] = {
