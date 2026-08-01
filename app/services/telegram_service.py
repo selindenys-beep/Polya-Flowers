@@ -39,7 +39,7 @@ def send_message(chat_id: int | str, text: str, reply_to: int | None = None,
     """Надсилає текстове повідомлення від імені бота (за потреби з кнопками)."""
     data = {"chat_id": chat_id, "text": text}
     if reply_to:
-        data["reply_to_parameters"] = __import__("json").dumps({"message_id": reply_to})
+        data["reply_parameters"] = __import__("json").dumps({"message_id": reply_to, "allow_sending_without_reply": True})
     if reply_markup:
         data["reply_markup"] = __import__("json").dumps(reply_markup)
     resp = httpx.post(_url("sendMessage"), data=data, timeout=30)

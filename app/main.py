@@ -13,7 +13,7 @@ import base64
 import secrets
 import uuid
 
-from fastapi import FastAPI, Form, HTTPException, Request, Response, UploadFile
+from fastapi import BackgroundTasks, FastAPI, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -144,17 +144,26 @@ def api_sheets(request: Request):
 # Бот відповідає клієнтам через Claude Haiku (chat_service).
 # ─────────────────────────────────────────────────────────────
 @app.post("/telegram/webhook")
-async def telegram_webhook(request: Request):
-    update = await request.json()
+async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
+    """Миттєво відповідає Telegram 200, а обробку робить у фоні.
 
+    Так Telegram не чекає (і не ретраїть) під час «пробудження» безкоштовного
+    Render чи виклику Claude — клієнт усе одно отримає відповідь.
+    """
+    update = await request.json()
+    background_tasks.add_task(_process_update, update)
+    return {"ok": True}
+
+
+def _process_update(update: dict) -> None:
     # Підстраховка: якщо десь лишились старі callback-кнопки — просто підтвердити.
     if "callback_query" in update:
         telegram_service.answer_callback(update["callback_query"]["id"])
-        return {"ok": True}
+        return
 
     msg = update.get("message") or update.get("edited_message")
     if not msg:
-        return {"ok": True}
+        return
 
     chat = msg["chat"]
     is_private = chat.get("type") == "private"
@@ -168,10 +177,10 @@ async def telegram_webhook(request: Request):
         telegram_service.send_message(
             chat["id"], "Дякуємо! 💐 Ми зберегли ваш контакт і звʼяжемось за потреби."
         )
-        return {"ok": True}
+        return
 
     if "text" not in msg:
-        return {"ok": True}
+        return
     text = msg["text"]
 
     # 1) Діп-лінк із кнопок під товаром: /start pay | ask | delivery.
@@ -189,7 +198,7 @@ async def telegram_webhook(request: Request):
                 "(підтримується Apple Pay / Google Pay та картка).",
                 reply_markup={"inline_keyboard": [[{"text": "💳 Перейти до оплати", "url": pay_url}]]},
             )
-            return {"ok": True}
+            return
 
         if payload == "delivery":
             answer = chat_service.DELIVERY_INFO
@@ -203,20 +212,19 @@ async def telegram_webhook(request: Request):
             question, kind = "/start", "старт"
         telegram_service.send_message(chat["id"], answer)
         sheets_service.log_message(tg_id, username, name, phone, question, answer, kind)
-        return {"ok": True}
+        return
 
     # 2) Звичайні повідомлення. У приваті відповідаємо завжди; у групі —
     # лише коли згадали бота або відповіли на його повідомлення (щоб не спамити).
     mentioned = "@" + config.TELEGRAM_BOT_USERNAME in text
     replied_to_bot = bool(msg.get("reply_to_message", {}).get("from", {}).get("is_bot"))
     if not (is_private or mentioned or replied_to_bot):
-        return {"ok": True}
+        return
 
     question = text.replace("@" + config.TELEGRAM_BOT_USERNAME, "").strip()
     reply = chat_service.generate_reply(question)
     telegram_service.send_message(chat["id"], reply, reply_to=msg["message_id"])
     sheets_service.log_message(tg_id, username, name, phone, question, reply, "повідомлення")
-    return {"ok": True}
 
 
 def _extract_user(msg: dict) -> tuple:

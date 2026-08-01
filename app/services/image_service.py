@@ -21,8 +21,11 @@ CANVAS = (1080, 1350)  # вертикальний формат для фолбе
 BACKGROUND_PROMPT = (
     "The input is a photo of a REAL HANDMADE flower made from chenille / pipe cleaners. "
     "Create one elegant vertical product poster while keeping the handmade flower EXACTLY as in the "
-    "input — identical colors, exact same petals, shape, texture and fine details. Do NOT redraw, "
-    "restyle, beautify, smooth or replace the flower. Only build a beautiful scene around it and add text.\n\n"
+    "input — identical colors, exact same petals, shape, texture and fine details. "
+    "CRITICAL: do NOT change or shift the flower's COLORS or shades in any way — the customer chose "
+    "that exact shade, so every petal color must stay pixel-accurate to the input. "
+    "Do NOT redraw, restyle, recolor, beautify, smooth or replace the flower. "
+    "Only build a beautiful scene around it and add text.\n\n"
     "SCENE: place the flower as the hero, slightly above center, on a soft luxurious light-lavender "
     "silk/satin fabric backdrop with gentle folds and soft natural light. Tastefully decorate around it "
     "(not covering it): a few delicate sprigs of white baby's breath (gypsophila), a few stems of dried "
