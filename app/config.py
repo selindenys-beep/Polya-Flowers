@@ -31,6 +31,9 @@ TELEGRAM_BOT_USERNAME = _get("TELEGRAM_BOT_USERNAME", "Polya_flowers_bot")
 SHEETS_WEBHOOK_URL = _get("SHEETS_WEBHOOK_URL")
 SHEETS_WEBHOOK_TOKEN = _get("SHEETS_WEBHOOK_TOKEN")
 
+# --- Сайт ---
+SITE_URL = _get("SITE_URL", "https://polyaflowers.com/")
+
 # --- Оплата ---
 MONOBANK_JAR_URL = _get("MONOBANK_JAR_URL")
 

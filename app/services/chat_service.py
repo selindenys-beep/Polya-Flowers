@@ -9,7 +9,7 @@ from anthropic import Anthropic
 
 from app import config
 
-WEBSITE_URL = "https://polyaflowers.com/"
+WEBSITE_URL = config.SITE_URL
 TELEGRAM_GROUP_URL = "https://t.me/+Wt2SgAl1xiFkZDZi"
 
 # ─────────────────────────────────────────────────────────────

@@ -30,6 +30,7 @@ def build_keyboard(product_id: str) -> dict:
                 {"text": "❓ Задати питання", "url": f"https://t.me/{bot}?start=ask"},
                 {"text": "🚚 Доставка", "url": f"https://t.me/{bot}?start=delivery"},
             ],
+            [{"text": "🌐 Перейти на сайт", "url": config.SITE_URL}],
         ]
     }
 
