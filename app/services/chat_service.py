@@ -13,6 +13,42 @@ WEBSITE_URL = config.SITE_URL
 TELEGRAM_GROUP_URL = "https://t.me/+Wt2SgAl1xiFkZDZi"
 TELEGRAM_CHANNEL_URL = "https://t.me/polyaflowers_ua"
 
+# Список ароматів парфумів (для відповідей бота).
+PERFUMES = """1. Comme des Garçons — Wonderwood
+2. Creed — Love in White
+3. Dior — J'adore L'Or
+4. Dior — Miss Dior Eau de Parfum
+5. Ex Nihilo — Blue Talisman
+6. Ex Nihilo — Fleur Narcotique
+7. Gucci — Flora Gorgeous Magnolia
+8. Hermès — Terre d'Hermès
+9. Hermès — Un Jardin sur le Nil
+10. Juliette Has a Gun — Miami Shake
+11. Juliette Has a Gun — Miss Charming
+12. Kilian — Can't Stop Loving You
+13. Kilian — Playing with the Devil
+14. Kilian — Woman in Gold
+15. Montale — Amber & Spices
+16. Montale — Aoud Musk
+17. Montale — Black Aoud
+18. Montale — Crazy in Love
+19. Montale — Dark Purple
+20. Montale — Day Dreams
+21. Montale — Intense Café Ristretto
+22. Montale — Intense Cherry
+23. Montale — Intense Pepper
+24. Montale — Intense So Iris
+25. Montale — Mango Manga
+26. Montale — Pure Gold
+27. Montale — Roses Musk
+28. Montale — Santal Wood
+29. Montale — So Amber
+30. Montale — Starry Night
+31. Montale — Sunset Flowers
+32. Montale — Wood & Spices
+33. Moschino — Funny!
+34. Moschino — Toy 2 Bubble Gum"""
+
 # ─────────────────────────────────────────────────────────────
 # Стартовий системний промт бота. Редагується вільно.
 # ─────────────────────────────────────────────────────────────
@@ -24,13 +60,15 @@ SYSTEM_PROMPT = f"""Ти — доброзичливий помічник маг�
 Про нас:
 - Ми робимо квіти ручної роботи зі штучних матеріалів — вони не в'януть.
 - Головна квітка — ЛІЛІЯ. Головна фішка: лілію можна зробити АРОМАТИЗОВАНОЮ —
-  з ароматом парфуму на вибір клієнта (близько 30–40 ароматів; точний список
-  уточнюється). Можна також замовити без аромату.
+  з ароматом парфуму на вибір клієнта. Можна також замовити без аромату.
 - Квіти доступні в різних відтінках, які обирає клієнт.
 - Каталог із цінами — на сайті: {WEBSITE_URL} (можеш давати це посилання).
 - Наш Telegram-канал (новинки та фото товарів): {TELEGRAM_CHANNEL_URL}
-- Наша Telegram-група: {TELEGRAM_GROUP_URL}
-Можеш пропонувати підписатися на канал, щоб не пропустити нові композиції.
+Можеш пропонувати підписатися на канал, щоб не пропустити нові надходження.
+
+Доступні аромати парфумів (клієнт обирає один):
+{PERFUMES}
+Якщо запитують про аромат — можеш назвати доступні з цього списку. Не вигадуй тих, яких тут немає.
 
 Доступні відтінки:
 💗 яскраво-рожевий (фуксія); 🌸 світло-рожевий; ❤️ червоний; 💜 фіолетовий;
@@ -65,7 +103,7 @@ DELIVERY_INFO = """🚚 Доставка по Україні:
 Оплата доставки — за тарифами перевізника. Напишіть, будь ласка, місто та бажану
 дату — і ми все узгодимо 💐
 
-Композицію можна замовити з ароматом парфуму (список ароматів уточнюється) або без аромату."""
+Композицію можна замовити з ароматом парфуму (на вибір зі списку) або без аромату."""
 
 PAYMENT_INFO = """💳 Оплата за посиланням (кнопка «Оплатити») — підтримується
 Apple Pay / Google Pay та звичайна картка."""

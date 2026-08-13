@@ -37,12 +37,12 @@ def _post(sheet: str, header: list[str], row: list) -> None:
     resp.raise_for_status()
 
 
-# --- Продажі ---
+# --- Опубліковані товари (публікації з дашборда) ---
 _SALE_HEADER = ["Дата", "ID товару", "Опис", "Ціна", "Підпис", "Посилання на пост"]
 
 
 def append_sale(product_id: str, description: str, price: str, caption: str, post_url: str = "") -> None:
-    _post("Продажі", _SALE_HEADER, [_now(), product_id, description, price, caption, post_url])
+    _post("Опубліковані товари", _SALE_HEADER, [_now(), product_id, description, price, caption, post_url])
 
 
 # --- Повідомлення (переписка з клієнтами) ---
@@ -59,17 +59,30 @@ def log_message(tg_id, username: str, name: str, phone: str,
         print(f"[sheets_service] log_message failed: {e}")
 
 
-# --- Оплати (натискання кнопки «Оплатити») ---
+# --- Натиснули Оплатити через бота ---
 _PAYMENT_HEADER = ["Дата", "Telegram ID", "Нікнейм", "Ім'я", "Телефон", "Дія"]
 
 
 def log_payment_click(tg_id, username: str, name: str, phone: str) -> None:
-    """Додає рядок про натискання «Оплатити» в аркуш «Оплати» (кожне натискання окремо)."""
+    """Кожне натискання «Оплатити» у боті — окремий рядок."""
     try:
-        _post("Оплати", _PAYMENT_HEADER,
+        _post("Натиснули Оплатити через бота", _PAYMENT_HEADER,
               [_now(), tg_id, username, name, phone, "Натиснув «Оплатити»"])
     except Exception as e:  # noqa: BLE001
         print(f"[sheets_service] log_payment_click failed: {e}")
+
+
+# --- Нові підписники каналу (Telegram) ---
+_SUBSCRIBER_HEADER = ["Дата", "Telegram ID", "Нікнейм", "Ім'я", "Дія"]
+
+
+def log_channel_subscriber(tg_id, username: str, name: str, action: str = "Приєднався до каналу") -> None:
+    """Новий підписник каналу в Telegram — окремий рядок."""
+    try:
+        _post("Нові підписники каналу", _SUBSCRIBER_HEADER,
+              [_now(), tg_id, username, name, action])
+    except Exception as e:  # noqa: BLE001
+        print(f"[sheets_service] log_channel_subscriber failed: {e}")
 
 
 def read_all() -> list[dict]:

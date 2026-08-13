@@ -174,6 +174,22 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
 
 
 def _process_update(update: dict) -> None:
+    # Новий підписник каналу (Telegram) → рядок у Google Sheets.
+    cm = update.get("chat_member")
+    if cm:
+        new = cm.get("new_chat_member", {})
+        old = cm.get("old_chat_member", {})
+        joined = (old.get("status") in ("left", "kicked")
+                  and new.get("status") in ("member", "administrator", "creator"))
+        if joined:
+            u = new.get("user", {})
+            uname = "@" + u["username"] if u.get("username") else ""
+            fullname = " ".join(x for x in [u.get("first_name"), u.get("last_name")] if x)
+            sheets_service.log_channel_subscriber(u.get("id", ""), uname, fullname)
+        return
+    if "my_chat_member" in update:  # зміни статусу самого бота — ігноруємо
+        return
+
     # Підстраховка: якщо десь лишились старі callback-кнопки — просто підтвердити.
     if "callback_query" in update:
         telegram_service.answer_callback(update["callback_query"]["id"])

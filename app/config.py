@@ -29,8 +29,11 @@ TELEGRAM_BOT_USERNAME = _get("TELEGRAM_BOT_USERNAME", "Polya_flowers_bot")
 
 
 def telegram_targets() -> list[str]:
-    """Куди публікувати товар: група та/або канал (усі непорожні)."""
-    return [t for t in (TELEGRAM_GROUP_CHAT_ID, TELEGRAM_CHANNEL_CHAT_ID) if t]
+    """Куди публікувати товар. Наразі — лише КАНАЛ (група вимкнена).
+    Якщо канал не заданий — фолбек на групу."""
+    if TELEGRAM_CHANNEL_CHAT_ID:
+        return [TELEGRAM_CHANNEL_CHAT_ID]
+    return [TELEGRAM_GROUP_CHAT_ID] if TELEGRAM_GROUP_CHAT_ID else []
 
 # --- Google Sheets (через Apps Script Web App) ---
 # URL розгорнутого веб-застосунку Apps Script + спільний токен для захисту.
