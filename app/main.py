@@ -118,19 +118,32 @@ async def api_publish(request: Request, product_id: str = Form(...), caption: st
     if not item:
         raise HTTPException(status_code=404, detail="Товар не знайдено або сесія застаріла")
 
-    tg = telegram_service.publish_product(item["image"], caption, product_id)
-    post_url = ""
-    try:
-        chat = str(tg["result"]["chat"]["id"]).replace("-100", "")
-        post_url = f"https://t.me/c/{chat}/{tg['result']['message_id']}"
-    except (KeyError, TypeError):
-        pass
+    results = telegram_service.publish_product(item["image"], caption, product_id)
+    post_url = _best_post_url(results)
 
     sheets_service.append_sale(
         product_id, item["description"], item["price"], caption, post_url
     )
     _PENDING.pop(product_id, None)
     return {"ok": True, "post_url": post_url}
+
+
+def _best_post_url(results: list[dict]) -> str:
+    """Будує посилання на пост: спершу публічний канал (t.me/username/N),
+    інакше приватний формат t.me/c/<id>/N. Повертає перший, що вдалося."""
+    private = ""
+    for r in results:
+        res = r.get("result", {})
+        chat = res.get("chat", {})
+        mid = res.get("message_id")
+        if not mid:
+            continue
+        if chat.get("username"):
+            return f"https://t.me/{chat['username']}/{mid}"
+        if not private:
+            cid = str(chat.get("id", "")).replace("-100", "")
+            private = f"https://t.me/c/{cid}/{mid}"
+    return private
 
 
 @app.get("/api/sheets")
