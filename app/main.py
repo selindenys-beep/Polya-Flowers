@@ -10,6 +10,7 @@
 from __future__ import annotations
 
 import base64
+import json
 import secrets
 import uuid
 
@@ -22,6 +23,7 @@ from app import config
 from app.services import (
     chat_service,
     image_service,
+    notify_service,
     sheets_service,
     telegram_service,
     text_service,
@@ -146,6 +148,29 @@ def _best_post_url(results: list[dict]) -> str:
     return private
 
 
+@app.post("/api/notify")
+async def api_notify(request: Request):
+    """Сповіщення адмінам про події з сайту («Купити» / форма зворотного звʼязку).
+
+    Викликається сайтом (text/plain, як і запис у таблицю). Захищено спільним токеном.
+    """
+    try:
+        data = json.loads(await request.body())
+    except Exception:  # noqa: BLE001
+        return {"ok": False, "error": "bad request"}
+    if data.get("token") != config.SHEETS_WEBHOOK_TOKEN:
+        return {"ok": False, "error": "unauthorized"}
+
+    event = data.get("event")
+    if event == "buy":
+        notify_service.notify_site_buy(
+            data.get("product", ""), data.get("price", ""),
+            data.get("color", ""), data.get("scent", ""), data.get("phone", ""))
+    elif event == "feedback":
+        notify_service.notify_feedback(data.get("name", ""), data.get("phone", ""))
+    return {"ok": True}
+
+
 @app.get("/api/sheets")
 def api_sheets(request: Request):
     """Повертає всі аркуші Google Sheets для відображення у вкладках дашборда."""
@@ -225,6 +250,7 @@ def _process_update(update: dict) -> None:
         # Оплата: фіксуємо натискання і даємо кнопку переходу на monobank.
         if payload == "pay":
             sheets_service.log_payment_click(tg_id, username, name, phone)
+            notify_service.notify_bot_pay(tg_id, username, name, phone)
             pay_url = config.MONOBANK_JAR_URL or config.PUBLIC_BASE_URL
             telegram_service.send_message(
                 chat["id"],

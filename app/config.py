@@ -43,6 +43,11 @@ SHEETS_WEBHOOK_TOKEN = _get("SHEETS_WEBHOOK_TOKEN")
 # --- Сайт ---
 SITE_URL = _get("SITE_URL", "https://polyaflowers.com/")
 
+# --- Бот-нотифікатор (сповіщення адмінам) ---
+NOTIFY_BOT_TOKEN = _get("NOTIFY_BOT_TOKEN")
+# ID адмінів через кому: "211302570,1328813668"
+NOTIFY_CHAT_IDS = [x.strip() for x in _get("NOTIFY_CHAT_IDS").split(",") if x.strip()]
+
 # --- Оплата ---
 MONOBANK_JAR_URL = _get("MONOBANK_JAR_URL")
 
