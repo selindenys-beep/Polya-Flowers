@@ -86,11 +86,12 @@ async def api_process(
     skip_image: str = Form(""),
     brand_style: str = Form("1"),
     image_wishes: str = Form(""),
+    image_text: str = Form(""),
 ):
     """Обробляє фото + генерує підпис (вкладки «Новий товар» / «Готове фото»).
 
     skip_image — готове фото (без зміни фону).
-    brand_style — фірмовий стиль; image_wishes — власні побажання до картинки.
+    brand_style — фірмовий стиль; image_wishes — побажання до фону; image_text — напис на картинці.
     """
     if not _is_authed(request):
         raise HTTPException(status_code=401, detail="Потрібен вхід")
@@ -100,7 +101,8 @@ async def api_process(
     if skip_image:
         processed = image_service.passthrough(raw)
     else:
-        processed = image_service.process(raw, brand_style=bool(brand_style), wishes=image_wishes)
+        processed = image_service.process(raw, brand_style=bool(brand_style),
+                                          bg_wishes=image_wishes, overlay_text=image_text)
 
     product_id = uuid.uuid4().hex[:10]
     _PENDING[product_id] = {
@@ -123,6 +125,7 @@ async def api_prepare_post(
     photo: Optional[UploadFile] = None,
     image_mode: str = Form("generate"),   # generate | asis | none
     image_wishes: str = Form(""),
+    image_text: str = Form(""),
     description: str = Form(""),
     buttons: str = Form("[]"),            # JSON: [{"text","url"}, ...]
     presets: str = Form(""),              # напр. "pay,ask,delivery,site"
@@ -133,12 +136,13 @@ async def api_prepare_post(
 
     raw = await photo.read() if (photo is not None and image_mode != "none") else None
 
-    # Зображення
+    # Зображення (для новини — гарний фон за замовчуванням, без брендового тексту)
     image = None
     if image_mode == "asis" and raw:
         image = image_service.passthrough(raw)
     elif image_mode == "generate" and raw:
-        image = image_service.process(raw, brand_style=True, wishes=image_wishes)
+        image = image_service.process(raw, brand_style=False,
+                                      bg_wishes=image_wishes, overlay_text=image_text)
 
     # Підпис: якщо є фото — генеруємо/враховуємо; якщо тільки текст — беремо як є
     if description.strip() and image is None and not raw:

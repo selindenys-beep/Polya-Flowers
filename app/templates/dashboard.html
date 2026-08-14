@@ -126,8 +126,11 @@
               <small>Рожевий фон, лаванда, перли та напис «Polya Flowers». Квіти НЕ змінюються.</small></span>
           </label>
 
-          <label>Побажання до картинки або напис (необов'язково)</label>
-          <textarea id="add-wishes" placeholder="Напр.: підпис «День матері», більше жовтих квітів на фоні… Якщо порожньо — фірмовий стиль."></textarea>
+          <label>✍️ Напис НА картинці (необов'язково)</label>
+          <textarea id="add-text" placeholder="Напр.: З Днем матері! · Залиш порожнім — без напису (або «Polya Flowers» у фірмовому стилі)."></textarea>
+
+          <label>🎨 Побажання до фону / стилю (необов'язково)</label>
+          <textarea id="add-wishes" placeholder="Напр.: святковий рожевий фон із кульками. Це НЕ друкується на фото. Порожньо — гарний/фірмовий фон."></textarea>
 
           <label>Опис товару (необов'язково)</label>
           <textarea id="add-desc" placeholder="Напр.: ароматизована лілія, відтінок фуксія"></textarea>
@@ -187,8 +190,11 @@
           </div>
           <input type="file" id="po-file" accept="image/*" style="display:none">
 
-          <label>Побажання до картинки / напис (необов'язково)</label>
-          <textarea id="po-wishes" placeholder="Напр.: святковий фон, напис «Знижки -10%»…"></textarea>
+          <label>✍️ Напис НА картинці (необов'язково)</label>
+          <textarea id="po-text" placeholder="Напр.: Знижки -10%! · Залиш порожнім — без напису на фото."></textarea>
+
+          <label>🎨 Побажання до фону / стилю (необов'язково)</label>
+          <textarea id="po-wishes" placeholder="Напр.: святковий фон із кульками. Це НЕ друкується на фото. Порожньо — гарний фон автоматично."></textarea>
 
           <label class="check">
             <input type="checkbox" id="po-asis">
@@ -295,7 +301,7 @@
         fd.append('description',$(p+'-desc').value);
         fd.append('price',$(p+'-price').value);
         if(opts.skipImage) fd.append('skip_image','1');
-        if(opts.brand){ fd.append('brand_style',$(p+'-brand').checked?'1':''); fd.append('image_wishes',$(p+'-wishes').value); }
+        if(opts.brand){ fd.append('brand_style',$(p+'-brand').checked?'1':''); fd.append('image_wishes',$(p+'-wishes').value); fd.append('image_text',$(p+'-text').value); }
         try{
           const r=await fetchT('/api/process',{method:'POST',body:fd},200000);
           if(!r.ok)throw new Error(await r.text());
@@ -350,6 +356,7 @@
         if(file && mode!=='none') fd.append('photo',file);
         fd.append('image_mode',mode);
         fd.append('image_wishes',$('po-wishes').value);
+        fd.append('image_text',$('po-text').value);
         fd.append('description',$('po-desc').value);
         fd.append('buttons',JSON.stringify(buttons));
         fd.append('presets',presets.join(','));

@@ -36,36 +36,63 @@ PRESERVE = (
     "Portrait orientation, high quality."
 )
 
-# Фірмова сцена (за замовчуванням) — за референсом бренду.
-BRAND_SCENE = (
-    "\n\nSCENE: place the product as the hero, on a soft luxurious PINK silk/satin fabric backdrop "
+# Фірмовий ФОН (за референсом бренду).
+BRAND_BG = (
+    "\n\nSCENE: place the product as the hero on a soft luxurious PINK silk/satin fabric backdrop "
     "with gentle folds, soft dreamy light and subtle bokeh sparkles. Tastefully decorate around it "
     "(never covering the flowers): delicate sprigs of white baby's breath (gypsophila), a few stems of "
     "purple lavender in the corners, and a light scattering of small white pearl beads. "
-    "Elegant, soft, feminine, premium florist-boutique aesthetic.\n\n"
-    "TEXT (render crisp, spelled EXACTLY, no typos, in deep elegant purple, not covering the flowers):\n"
+    "Elegant, soft, feminine, premium florist-boutique aesthetic."
+)
+
+# Фірмовий ТЕКСТ (напис бренду).
+BRAND_TEXT = (
+    "\n\nTEXT (render crisp, spelled EXACTLY, no typos, in deep elegant purple, not covering the flowers):\n"
     "  - top center, large graceful calligraphy script: Polya Flowers\n"
     "  - below, elegant script between two short dashes: Handmade\n"
     "  - under it, small letter-spaced capitals: WITH LOVE, then a tiny purple heart\n"
-    "  - at the very bottom center, small letter-spaced capitals: MADE WITH CARE\n"
-    "Cohesive soft-pink and purple palette."
+    "  - at the very bottom center, small letter-spaced capitals: MADE WITH CARE"
 )
 
-# Проста сцена, коли фірмовий стиль вимкнено (без брендового тексту).
-SIMPLE_SCENE = (
-    "\n\nSCENE: place the product on a soft, elegant, slightly blurred pastel backdrop "
-    "(gentle pink and lavender tones) with soft natural light. No text unless requested."
+# Гарний фон за замовчуванням (коли фірмовий стиль вимкнено і побажань немає).
+DEFAULT_BG = (
+    "\n\nSCENE: place the product on a beautiful soft, dreamy, slightly blurred pastel studio backdrop "
+    "(gentle pink and lavender tones) with soft natural light and a subtle bokeh glow. Clean and elegant."
 )
 
-BACKGROUND_PROMPT = PRESERVE + BRAND_SCENE  # сумісність зі старим кодом
+BACKGROUND_PROMPT = PRESERVE + BRAND_BG + BRAND_TEXT  # сумісність зі старим кодом
 
 
-def build_prompt(brand_style: bool = True, wishes: str = "") -> str:
-    """Складає промт: PRESERVE + (побажання користувача АБО фірмова/проста сцена)."""
-    wishes = (wishes or "").strip()
-    if wishes:
-        return PRESERVE + "\n\nADDITIONAL REQUEST (background and text only): " + wishes
-    return PRESERVE + (BRAND_SCENE if brand_style else SIMPLE_SCENE)
+def build_prompt(brand_style: bool = True, bg_wishes: str = "", overlay_text: str = "") -> str:
+    """Складає промт, чітко розділяючи ФОН (інструкції) і ТЕКСТ на картинці.
+
+    bg_wishes — побажання до фону/стилю (НЕ друкуються як текст).
+    overlay_text — точний напис, який треба надрукувати на картинці.
+    """
+    bg_wishes = (bg_wishes or "").strip()
+    overlay_text = (overlay_text or "").strip()
+    parts = [PRESERVE]
+
+    # --- Фон ---
+    if bg_wishes:
+        parts.append("\n\nBACKGROUND — apply this to the scene BEHIND the product. These are INSTRUCTIONS "
+                     "for the background only; do NOT write, print or render these words anywhere on the image: "
+                     + bg_wishes)
+    elif brand_style:
+        parts.append(BRAND_BG)
+    else:
+        parts.append(DEFAULT_BG)
+
+    # --- Текст на картинці ---
+    if overlay_text:
+        parts.append("\n\nTEXT ON IMAGE: render ONLY this exact text, beautifully styled, spelled EXACTLY, "
+                     "with NO other words, not covering the product: «" + overlay_text + "»")
+    elif brand_style and not bg_wishes:
+        parts.append(BRAND_TEXT)
+    else:
+        parts.append("\n\nDo NOT add any text, words, captions or letters to the image at all.")
+
+    return "".join(parts)
 
 
 def _simple_composite(photo_bytes: bytes) -> bytes:
@@ -115,11 +142,13 @@ def passthrough(photo_bytes: bytes) -> bytes:
     return out.getvalue()
 
 
-def process(photo_bytes: bytes, brand_style: bool = True, wishes: str = "") -> bytes:
-    """Обробляє фото: фірмовий стиль АБО власні побажання. Фолбек — підкладка."""
+def process(photo_bytes: bytes, brand_style: bool = True,
+            bg_wishes: str = "", overlay_text: str = "") -> bytes:
+    """Обробляє фото: фон (фірмовий/побажання/дефолт) + напис. Фолбек — підкладка."""
     if config.OPENAI_API_KEY:
         try:
-            return _openai_replace_background(photo_bytes, build_prompt(brand_style, wishes))
+            return _openai_replace_background(
+                photo_bytes, build_prompt(brand_style, bg_wishes, overlay_text))
         except Exception as e:  # noqa: BLE001 — не валимо публікацію через фон
             print(f"[image_service] OpenAI fallback: {e}")
     return _simple_composite(photo_bytes)
