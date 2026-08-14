@@ -17,26 +17,48 @@ from app import config
 
 CANVAS = (1080, 1350)  # вертикальний формат для фолбеку
 
-# Промт для сцени навколо виробу + брендинг. Сам виріб має лишитись незмінним.
-BACKGROUND_PROMPT = (
-    "The input is a photo of a REAL HANDMADE flower made from chenille / pipe cleaners. "
-    "Create one elegant vertical product poster while keeping the handmade flower EXACTLY as in the "
-    "input — identical colors, exact same petals, shape, texture and fine details. "
-    "CRITICAL: do NOT change or shift the flower's COLORS or shades in any way — the customer chose "
-    "that exact shade, so every petal color must stay pixel-accurate to the input. "
-    "Do NOT redraw, restyle, recolor, beautify, smooth or replace the flower. "
-    "Only build a beautiful scene around it and add text.\n\n"
-    "SCENE: place the flower as the hero, slightly above center, on a soft luxurious light-lavender "
-    "silk/satin fabric backdrop with gentle folds and soft natural light. Tastefully decorate around it "
-    "(not covering it): a few delicate sprigs of white baby's breath (gypsophila), a few stems of dried "
-    "lavender in the corners, and a light scattering of small pearl beads. Elegant, soft, feminine, "
-    "premium florist-boutique aesthetic, dreamy and clean.\n\n"
-    "TEXT (render it crisp and spelled EXACTLY, no typos, in soft elegant purple tones, not covering the flower):\n"
-    "  - top center, graceful calligraphy script, large: Polya Flowers\n"
-    "  - just below, elegant script, medium: Handmade\n"
-    "  - under it, small letter-spaced capitals with a tiny heart: WITH LOVE\n\n"
-    "Portrait orientation, high quality, cohesive lavender color palette."
+# Жорстке збереження самого виробу (застосовується завжди).
+PRESERVE = (
+    "The input is a photo of REAL HANDMADE flowers made from chenille / pipe cleaners "
+    "(sometimes in a basket, a box or a bouquet). "
+    "You MUST keep the product itself 100% UNCHANGED and photorealistic: exact same flowers, "
+    "exact same COLORS and shades (do not recolor or shift any hue at all), exact same petal shapes, "
+    "count, texture and arrangement. If flowers are in a basket, box or vase — keep that basket/box/vase "
+    "EXACTLY as is too. Do NOT redraw, restyle, recolor, beautify, smooth, add or remove any flower. "
+    "Intervene MINIMALLY: change ONLY the background behind the product and add the requested text. "
+    "Portrait orientation, high quality."
 )
+
+# Фірмова сцена (за замовчуванням) — за референсом бренду.
+BRAND_SCENE = (
+    "\n\nSCENE: place the product as the hero, on a soft luxurious PINK silk/satin fabric backdrop "
+    "with gentle folds, soft dreamy light and subtle bokeh sparkles. Tastefully decorate around it "
+    "(never covering the flowers): delicate sprigs of white baby's breath (gypsophila), a few stems of "
+    "purple lavender in the corners, and a light scattering of small white pearl beads. "
+    "Elegant, soft, feminine, premium florist-boutique aesthetic.\n\n"
+    "TEXT (render crisp, spelled EXACTLY, no typos, in deep elegant purple, not covering the flowers):\n"
+    "  - top center, large graceful calligraphy script: Polya Flowers\n"
+    "  - below, elegant script between two short dashes: Handmade\n"
+    "  - under it, small letter-spaced capitals: WITH LOVE, then a tiny purple heart\n"
+    "  - at the very bottom center, small letter-spaced capitals: MADE WITH CARE\n"
+    "Cohesive soft-pink and purple palette."
+)
+
+# Проста сцена, коли фірмовий стиль вимкнено (без брендового тексту).
+SIMPLE_SCENE = (
+    "\n\nSCENE: place the product on a soft, elegant, slightly blurred pastel backdrop "
+    "(gentle pink and lavender tones) with soft natural light. No text unless requested."
+)
+
+BACKGROUND_PROMPT = PRESERVE + BRAND_SCENE  # сумісність зі старим кодом
+
+
+def build_prompt(brand_style: bool = True, wishes: str = "") -> str:
+    """Складає промт: PRESERVE + (побажання користувача АБО фірмова/проста сцена)."""
+    wishes = (wishes or "").strip()
+    if wishes:
+        return PRESERVE + "\n\nADDITIONAL REQUEST (background and text only): " + wishes
+    return PRESERVE + (BRAND_SCENE if brand_style else SIMPLE_SCENE)
 
 
 def _simple_composite(photo_bytes: bytes) -> bytes:
@@ -58,8 +80,8 @@ def _simple_composite(photo_bytes: bytes) -> bytes:
     return out.getvalue()
 
 
-def _openai_replace_background(photo_bytes: bytes) -> bytes:
-    """Заміна фону через gpt-image-1. Кидає виняток, якщо не вдалося."""
+def _openai_replace_background(photo_bytes: bytes, prompt: str) -> bytes:
+    """Заміна фону через gpt-image-1 за заданим промтом. Кидає виняток, якщо не вдалося."""
     img = Image.open(io.BytesIO(photo_bytes)).convert("RGB")
     img.thumbnail((1024, 1024), Image.LANCZOS)
     buf = io.BytesIO()
@@ -71,7 +93,7 @@ def _openai_replace_background(photo_bytes: bytes) -> bytes:
     resp = client.images.edit(
         model="gpt-image-1",
         image=buf,
-        prompt=BACKGROUND_PROMPT,
+        prompt=prompt,
         size="1024x1536",
     )
     return base64.b64decode(resp.data[0].b64_json)
@@ -85,11 +107,11 @@ def passthrough(photo_bytes: bytes) -> bytes:
     return out.getvalue()
 
 
-def process(photo_bytes: bytes, caption: str | None = None) -> bytes:
-    """Повертає JPEG/PNG-байти обробленого фото. Пробує OpenAI, інакше — фолбек."""
+def process(photo_bytes: bytes, brand_style: bool = True, wishes: str = "") -> bytes:
+    """Обробляє фото: фірмовий стиль АБО власні побажання. Фолбек — підкладка."""
     if config.OPENAI_API_KEY:
         try:
-            return _openai_replace_background(photo_bytes)
+            return _openai_replace_background(photo_bytes, build_prompt(brand_style, wishes))
         except Exception as e:  # noqa: BLE001 — не валимо публікацію через фон
             print(f"[image_service] OpenAI fallback: {e}")
     return _simple_composite(photo_bytes)

@@ -13,6 +13,7 @@ import base64
 import json
 import secrets
 import uuid
+from typing import Optional
 
 from fastapi import BackgroundTasks, FastAPI, Form, HTTPException, Request, Response, UploadFile
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -83,18 +84,23 @@ async def api_process(
     description: str = Form(""),
     price: str = Form(""),
     skip_image: str = Form(""),
+    brand_style: str = Form("1"),
+    image_wishes: str = Form(""),
 ):
-    """Обробляє фото + генерує підпис. Повертає прев'ю (base64) і текст.
+    """Обробляє фото + генерує підпис (вкладки «Новий товар» / «Готове фото»).
 
-    skip_image (готове фото): не змінюємо фон — беремо зображення як є,
-    лише генеруємо підпис.
+    skip_image — готове фото (без зміни фону).
+    brand_style — фірмовий стиль; image_wishes — власні побажання до картинки.
     """
     if not _is_authed(request):
         raise HTTPException(status_code=401, detail="Потрібен вхід")
 
     raw = await photo.read()
     caption = text_service.generate_caption(description, price, raw)
-    processed = image_service.passthrough(raw) if skip_image else image_service.process(raw)
+    if skip_image:
+        processed = image_service.passthrough(raw)
+    else:
+        processed = image_service.process(raw, brand_style=bool(brand_style), wishes=image_wishes)
 
     product_id = uuid.uuid4().hex[:10]
     _PENDING[product_id] = {
@@ -102,6 +108,7 @@ async def api_process(
         "caption": caption,
         "description": description,
         "price": price,
+        "keyboard": "__default__",
     }
     return {
         "product_id": product_id,
@@ -110,21 +117,77 @@ async def api_process(
     }
 
 
+@app.post("/api/prepare-post")
+async def api_prepare_post(
+    request: Request,
+    photo: Optional[UploadFile] = None,
+    image_mode: str = Form("generate"),   # generate | asis | none
+    image_wishes: str = Form(""),
+    description: str = Form(""),
+    buttons: str = Form("[]"),            # JSON: [{"text","url"}, ...]
+    presets: str = Form(""),              # напр. "pay,ask,delivery,site"
+):
+    """Готує довільний пост/новину для каналу: фото (генерувати/як є/без), опис, кнопки."""
+    if not _is_authed(request):
+        raise HTTPException(status_code=401, detail="Потрібен вхід")
+
+    raw = await photo.read() if (photo is not None and image_mode != "none") else None
+
+    # Зображення
+    image = None
+    if image_mode == "asis" and raw:
+        image = image_service.passthrough(raw)
+    elif image_mode == "generate" and raw:
+        image = image_service.process(raw, brand_style=True, wishes=image_wishes)
+
+    # Підпис: якщо є фото — генеруємо/враховуємо; якщо тільки текст — беремо як є
+    if description.strip() and image is None and not raw:
+        caption = description.strip()
+    else:
+        caption = text_service.generate_caption(description, "", image or raw)
+
+    # Кнопки
+    try:
+        custom = json.loads(buttons) if buttons else []
+    except Exception:  # noqa: BLE001
+        custom = []
+    preset_set = [x.strip() for x in presets.split(",") if x.strip()]
+    keyboard = telegram_service.build_keyboard(custom=custom, presets=preset_set)
+
+    product_id = uuid.uuid4().hex[:10]
+    _PENDING[product_id] = {
+        "image": image,
+        "caption": caption,
+        "description": description,
+        "price": "",
+        "keyboard": keyboard,
+    }
+    return {
+        "product_id": product_id,
+        "caption": caption,
+        "image_base64": base64.b64encode(image).decode() if image else "",
+        "keyboard": keyboard,
+    }
+
+
 @app.post("/api/publish")
 async def api_publish(request: Request, product_id: str = Form(...), caption: str = Form(...)):
-    """Публікує підготовлений товар у Telegram і зберігає в Google Sheets."""
+    """Публікує підготовлений пост у Telegram і зберігає в Google Sheets."""
     if not _is_authed(request):
         raise HTTPException(status_code=401, detail="Потрібен вхід")
 
     item = _PENDING.get(product_id)
     if not item:
         raise HTTPException(status_code=404, detail="Товар не знайдено або сесія застаріла")
+    if not item.get("image") and not caption.strip():
+        raise HTTPException(status_code=400, detail="Порожній пост: додайте фото або текст")
 
-    results = telegram_service.publish_product(item["image"], caption, product_id)
+    results = telegram_service.publish_product(
+        item.get("image"), caption, product_id, keyboard=item.get("keyboard", "__default__"))
     post_url = _best_post_url(results)
 
     sheets_service.append_sale(
-        product_id, item["description"], item["price"], caption, post_url
+        product_id, item.get("description", ""), item.get("price", ""), caption, post_url
     )
     _PENDING.pop(product_id, None)
     return {"ok": True, "post_url": post_url}
