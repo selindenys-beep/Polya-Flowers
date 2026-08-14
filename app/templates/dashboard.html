@@ -255,6 +255,12 @@
     let sheetsData=[], activeTab='add';
     const $=id=>document.getElementById(id);
     function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+    // fetch із таймаутом (щоб не «висіти» безкінечно)
+    async function fetchT(url,opts,ms){
+      const c=new AbortController(); const t=setTimeout(()=>c.abort(),ms||200000);
+      try{ return await fetch(url,Object.assign({signal:c.signal},opts)); }
+      finally{ clearTimeout(t); }
+    }
 
     // ---- confetti при публікації ----
     function celebrate(){
@@ -282,7 +288,7 @@
       $(p+'-processBtn').addEventListener('click',async()=>{
         if(!file)return;
         $(p+'-processBtn').disabled=true;
-        $(p+'-procStatus').textContent=opts.skipImage?'Готую підпис…':'Обробляю… (до хвилини)';
+        $(p+'-procStatus').textContent=opts.skipImage?'Готую підпис…':'Обробляю фото… це може зайняти до ~2 хвилин ⏳';
         $(p+'-procStatus').className='status';
         const fd=new FormData();
         fd.append('photo',file);
@@ -291,14 +297,16 @@
         if(opts.skipImage) fd.append('skip_image','1');
         if(opts.brand){ fd.append('brand_style',$(p+'-brand').checked?'1':''); fd.append('image_wishes',$(p+'-wishes').value); }
         try{
-          const r=await fetch('/api/process',{method:'POST',body:fd});
+          const r=await fetchT('/api/process',{method:'POST',body:fd},200000);
           if(!r.ok)throw new Error(await r.text());
           const d=await r.json(); productId=d.product_id;
           $(p+'-preview').innerHTML='<img src="data:image/jpeg;base64,'+d.image_base64+'">';
           $(p+'-captionBox').style.display='block'; $(p+'-captionBox').textContent=d.caption;
           $(p+'-publishBtn').disabled=false;
           $(p+'-procStatus').textContent='Готово ✅ Можна редагувати підпис.'; $(p+'-procStatus').className='status ok';
-        }catch(err){$(p+'-procStatus').textContent='Помилка: '+err.message;$(p+'-procStatus').className='status err';}
+        }catch(err){
+          const m=err.name==='AbortError'?'Занадто довго — спробуй ще раз або познач «Готове фото».':err.message;
+          $(p+'-procStatus').textContent='Помилка: '+m;$(p+'-procStatus').className='status err';}
         finally{$(p+'-processBtn').disabled=false;}
       });
       $(p+'-publishBtn').addEventListener('click',()=>doPublish(p,()=>productId));
@@ -332,7 +340,9 @@
       $('po-prepareBtn').addEventListener('click',async()=>{
         const noimg=$('po-noimg').checked, asis=$('po-asis').checked;
         const mode=noimg?'none':(asis?'asis':'generate');
-        $('po-prepareBtn').disabled=true; $('po-procStatus').textContent='Готую новину…'; $('po-procStatus').className='status';
+        $('po-prepareBtn').disabled=true;
+        $('po-procStatus').textContent=(mode==='generate')?'Готую новину… генерація фото до ~2 хвилин ⏳':'Готую новину…';
+        $('po-procStatus').className='status';
         const buttons=[[$('po-b1t'),$('po-b1u')],[$('po-b2t'),$('po-b2u')],[$('po-b3t'),$('po-b3u')]]
           .map(([t,u])=>({text:t.value.trim(),url:u.value.trim()})).filter(b=>b.text&&b.url);
         const presets=['pay','ask','delivery','site'].filter(k=>$('po-'+k).checked);
@@ -344,7 +354,7 @@
         fd.append('buttons',JSON.stringify(buttons));
         fd.append('presets',presets.join(','));
         try{
-          const r=await fetch('/api/prepare-post',{method:'POST',body:fd});
+          const r=await fetchT('/api/prepare-post',{method:'POST',body:fd},200000);
           if(!r.ok)throw new Error(await r.text());
           const d=await r.json(); productId=d.product_id;
           $('po-preview').innerHTML=d.image_base64?'<img src="data:image/jpeg;base64,'+d.image_base64+'">':'<span class="muted">Без картинки (тільки текст).</span>';
@@ -353,7 +363,9 @@
           $('po-kb').innerHTML=kb.flat().map(b=>`<span class="kb-btn">${esc(b.text)}</span>`).join('');
           $('po-publishBtn').disabled=false;
           $('po-procStatus').textContent='Готово ✅ Перевір і публікуй.'; $('po-procStatus').className='status ok';
-        }catch(err){$('po-procStatus').textContent='Помилка: '+err.message;$('po-procStatus').className='status err';}
+        }catch(err){
+          const m=err.name==='AbortError'?'Занадто довго — спробуй ще раз, або познач «🔒 Не змінювати мою картинку» / «🚫 Без картинки».':err.message;
+          $('po-procStatus').textContent='Помилка: '+m;$('po-procStatus').className='status err';}
         finally{$('po-prepareBtn').disabled=false;}
       });
       $('po-publishBtn').addEventListener('click',()=>doPublish('po',()=>productId));

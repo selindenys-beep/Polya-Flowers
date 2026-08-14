@@ -15,6 +15,13 @@ from PIL import Image
 
 from app import config
 
+# Підтримка HEIC/HEIF (фото з iPhone/iPad), якщо бібліотека доступна.
+try:
+    import pillow_heif  # type: ignore
+    pillow_heif.register_heif_opener()
+except Exception:  # noqa: BLE001
+    pass
+
 CANVAS = (1080, 1350)  # вертикальний формат для фолбеку
 
 # Жорстке збереження самого виробу (застосовується завжди).
@@ -89,7 +96,8 @@ def _openai_replace_background(photo_bytes: bytes, prompt: str) -> bytes:
     buf.name = "flower.png"
     buf.seek(0)
 
-    client = OpenAI(api_key=config.OPENAI_API_KEY)
+    # timeout=150с + без повторів: якщо OpenAI гальмує — швидкий фолбек, не «висимо».
+    client = OpenAI(api_key=config.OPENAI_API_KEY, timeout=150.0, max_retries=0)
     resp = client.images.edit(
         model="gpt-image-1",
         image=buf,
