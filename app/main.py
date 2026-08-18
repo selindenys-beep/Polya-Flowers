@@ -39,6 +39,29 @@ _SESSIONS: set[str] = set()
 # Тимчасове сховище оброблених зображень до моменту публікації.
 _PENDING: dict[str, dict] = {}
 
+# Памʼять діалогів по Telegram ID (щоб бот не вітався щоразу і памʼятав контекст).
+# Тримається у памʼяті процесу; за першого звернення сидиться з Google Sheets
+# (аркуш «Повідомлення»), тож памʼять переживає перезапуск сервера.
+_HISTORY: dict[str, list[dict]] = {}
+_HISTORY_MAX = 12  # скільки останніх реплік (user+assistant) памʼятати
+
+
+def _get_history(tg_id) -> list[dict]:
+    key = str(tg_id)
+    if key not in _HISTORY:
+        # перше звернення після старту процесу — підвантажуємо історію клієнта з таблиці
+        _HISTORY[key] = sheets_service.history_for(tg_id, limit=_HISTORY_MAX // 2)
+    return _HISTORY[key]
+
+
+def _remember(tg_id, question: str, answer: str) -> None:
+    key = str(tg_id)
+    h = _HISTORY.setdefault(key, [])
+    h.append({"role": "user", "content": question})
+    h.append({"role": "assistant", "content": answer})
+    if len(h) > _HISTORY_MAX:
+        del h[: len(h) - _HISTORY_MAX]
+
 
 def _is_authed(request: Request) -> bool:
     if not config.DASHBOARD_PASSWORD:
@@ -98,6 +121,7 @@ async def api_process(
 
     raw = await photo.read()
     caption = text_service.generate_caption(description, price, raw)
+    caption = text_service.append_site_cta(caption)  # дописуємо рядок про сайт (вкладки «Новий товар»/«Готове фото»)
     if skip_image:
         processed = image_service.passthrough(raw)
     else:
@@ -349,8 +373,10 @@ def _process_update(update: dict) -> None:
         return
 
     question = text.replace("@" + config.TELEGRAM_BOT_USERNAME, "").strip()
-    reply = chat_service.generate_reply(question)
+    history = _get_history(tg_id)                       # памʼять діалогу по Telegram ID
+    reply = chat_service.generate_reply(question, history=history)
     telegram_service.send_message(chat["id"], reply, reply_to=msg["message_id"])
+    _remember(tg_id, question, reply)                   # оновлюємо памʼять
     sheets_service.log_message(tg_id, username, name, phone, question, reply, "повідомлення")
 
 

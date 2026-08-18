@@ -85,6 +85,39 @@ def log_channel_subscriber(tg_id, username: str, name: str, action: str = "Пр�
         print(f"[sheets_service] log_channel_subscriber failed: {e}")
 
 
+def history_for(tg_id, limit: int = 6) -> list[dict]:
+    """Памʼять діалогу по Telegram ID: останні пари питання/відповідь цього клієнта
+    з аркуша «Повідомлення» у форматі для Claude
+    ([{'role':'user',...}, {'role':'assistant',...}, ...]).
+
+    Використовується, щоб бот памʼятав контекст і не вітався щоразу.
+    Будь-яка помилка → порожня історія (бот усе одно відповість).
+    """
+    try:
+        rows: list = []
+        for sh in read_all():
+            if sh.get("name") == "Повідомлення":
+                rows = sh.get("values", [])
+                break
+        tgid = str(tg_id)
+        # колонки: Дата | Telegram ID | Нікнейм | Ім'я | Телефон | Запитання | Відповідь | Тип
+        # (рядок-заголовок, якщо він є, відсіється фільтром r[7] == "повідомлення")
+        pairs: list[tuple[str, str]] = []
+        for r in rows:
+            if len(r) >= 8 and str(r[1]) == tgid and r[7] == "повідомлення":
+                q, a = (r[5] or "").strip(), (r[6] or "").strip()
+                if q and a:
+                    pairs.append((q, a))
+        msgs: list[dict] = []
+        for q, a in pairs[-limit:]:
+            msgs.append({"role": "user", "content": q})
+            msgs.append({"role": "assistant", "content": a})
+        return msgs
+    except Exception as e:  # noqa: BLE001 — памʼять не має ламати відповідь
+        print(f"[sheets_service] history_for failed: {e}")
+        return []
+
+
 def read_all() -> list[dict]:
     """Читає всі аркуші через Apps Script (doGet). Повертає [{name, values}]."""
     if not config.SHEETS_WEBHOOK_URL:

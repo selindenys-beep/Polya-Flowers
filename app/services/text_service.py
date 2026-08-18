@@ -53,3 +53,21 @@ def generate_caption(description: str, price: str | None = None, photo_bytes: by
         messages=[{"role": "user", "content": content}],
     )
     return "".join(b.text for b in message.content if b.type == "text").strip()
+
+
+def append_site_cta(caption: str) -> str:
+    """Дописує до підпису один рядок із посиланням на сайт (текстове посилання, не кнопка).
+
+    Пост публікується з parse_mode=HTML, тому робимо клікабельним саме слово-домен —
+    посилання на сайт з'являється в повідомленні рівно один раз.
+    """
+    url = config.SITE_URL.rstrip("/")
+    domain = url.split("//", 1)[-1]  # напр. polyaflowers.com
+    cta = (
+        f'\n\n🛒 На сайті <a href="{config.SITE_URL}">{domain}</a> '
+        f"ви можете вибрати та оплатити обрану вами композицію"
+    )
+    base = (caption or "").rstrip()
+    if url in base:  # не дублюємо, якщо посилання вже є
+        return base
+    return base + cta
